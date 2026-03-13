@@ -27,9 +27,21 @@ types:
         type:
           switch-on: (pus_header.service_type << 8) | pus_header.service_subtype
           cases:
+            # ------------------------------------------------------------------
+            # Real Time Downlink    SPID 10433    SType: 3      SSubtype: 25
+            # ------------------------------------------------------------------
             0x319: real_time_downlink
+            # ------------------------------------------------------------------
+            # File status:          SPID 10258     SType: 144    SSubtype: 6
+            # ------------------------------------------------------------------
             0x9006: file_status
+            # ------------------------------------------------------------------
+            # Directory downlink    SPID 10428     SType: 159    SSubtype: 17
+            # ------------------------------------------------------------------
             0x9f11: directory_downlink
+            # ------------------------------------------------------------------
+            # Directory setup      SPID 10265      SType: 170    SSubtype: 27
+            # ------------------------------------------------------------------
             0xAA1B: directory_setup
             _: unknow_payload
 
@@ -88,6 +100,12 @@ types:
         size: 6
 
 
+#-------------------------------------------------------------------------------
+#
+# Directory setup      SPID 10265      SType: 170    SSubtype: 27 
+#
+#-------------------------------------------------------------------------------
+
   directory_setup:
     seq:
       - id: partition_id
@@ -114,6 +132,12 @@ types:
         type: u4
       - id: max_wrt_speed
         type: u4
+
+#-------------------------------------------------------------------------------
+#
+# File status:          SPID 10258     SType: 144    SSubtype: 6
+#
+#-------------------------------------------------------------------------------
 
 
   file_status:
@@ -149,6 +173,12 @@ types:
       - id: creation_time_cuc
         size: 6
 
+#-------------------------------------------------------------------------------
+#
+# Directory downlink    SPID 10428     SType: 159    SSubtype: 17
+#
+#-------------------------------------------------------------------------------
+
 
   directory_downlink:
     seq:
@@ -168,11 +198,18 @@ types:
         size: 4
         encoding: ASCII
       - id: state
-        size: 1
+        type: u1
       - id: priority
-        size: 1
+        type: u1
       - id: rf_band
-        size: 1
+        type: u1
+
+#-------------------------------------------------------------------------------
+#
+# Real Time Downlink    SPID 10433    SType: 3      SSubtype: 25
+#
+#-------------------------------------------------------------------------------
+
 
   real_time_downlink:
     seq:
@@ -199,21 +236,25 @@ types:
         - id: cfdp_ka_downlink_rate
           type: u4
         - id: cfdp_ka_session_state
-          size: 1
-        - id: cfdp_kacurrentfilename
-          size: 8
+          type: u1
+        - id: cfdp_ka_current_directory_id
+          size: 4
           type: str
           encoding: ASCII
+        - id: cfdp_ka_current_file_id
+          type: u4
         - id: cfdp_numberoftrans_ka
           type: u4
         - id: cfdp_x_downlink_rate
           type: u4
         - id: cfdp_x_session_state
-          size: 1
-        - id: cfdp_xcurrentfilename
-          size: 8
+          type: u1
+        - id: cfdp_x_current_directory_id
+          size: 4
           type: str
           encoding: ASCII
+        - id: cfdp_x_current_file_id
+          type: u4
         - id: cfdp_numberoftrans_x
           type: u4
 

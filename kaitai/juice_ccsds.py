@@ -151,12 +151,14 @@ class JuiceCcsds(KaitaiStruct):
             self.ft2_numberreceivedsdu = self._io.read_u4be()
             self.ft2_uplink_state = self._io.read_bytes(4)
             self.cfdp_ka_downlink_rate = self._io.read_u4be()
-            self.cfdp_ka_session_state = self._io.read_bytes(1)
-            self.cfdp_kacurrentfilename = (self._io.read_bytes(8)).decode(u"ASCII")
+            self.cfdp_ka_session_state = self._io.read_u1()
+            self.cfdp_ka_current_directory_id = (self._io.read_bytes(4)).decode(u"ASCII")
+            self.cfdp_ka_current_file_id = self._io.read_u4be()
             self.cfdp_numberoftrans_ka = self._io.read_u4be()
             self.cfdp_x_downlink_rate = self._io.read_u4be()
-            self.cfdp_x_session_state = self._io.read_bytes(1)
-            self.cfdp_xcurrentfilename = (self._io.read_bytes(8)).decode(u"ASCII")
+            self.cfdp_x_session_state = self._io.read_u1()
+            self.cfdp_x_current_directory_id = (self._io.read_bytes(4)).decode(u"ASCII")
+            self.cfdp_x_current_file_id = self._io.read_u4be()
             self.cfdp_numberoftrans_x = self._io.read_u4be()
 
 
@@ -170,9 +172,9 @@ class JuiceCcsds(KaitaiStruct):
         def _read(self):
             self.partition = self._io.read_bytes(1)
             self.directory_id = (self._io.read_bytes(4)).decode(u"ASCII")
-            self.state = self._io.read_bytes(1)
-            self.priority = self._io.read_bytes(1)
-            self.rf_band = self._io.read_bytes(1)
+            self.state = self._io.read_u1()
+            self.priority = self._io.read_u1()
+            self.rf_band = self._io.read_u1()
 
 
     class PusSecondaryHeader(KaitaiStruct):
