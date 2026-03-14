@@ -2,6 +2,8 @@ from pathlib import Path
 import json
 import logging
 
+from ssmm_processors.utils import cuc_to_utc
+
 
 class Processor:
 
@@ -21,6 +23,14 @@ class Processor:
             with output_file.open("w") as f:
                 json.dump(self.items, f, indent=2)
             self.logger.info("Generated file %s", str(output_file))
+
+    def build_item(self, packet, item):
+        utc = cuc_to_utc(packet.pus_header.sc_time)
+        return {
+            "event": self.__class__.__name__,
+            "timestamp": utc,
+            "data": item
+        }
 
 
 class NullProcessor(Processor):

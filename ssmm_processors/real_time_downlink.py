@@ -6,7 +6,9 @@ from ssmm_processors.utils import file_id_hex
 class RealTimeDownlinkProcessor(Processor):
 
     def process(self, packet):
-        self.items.append(self.rt_processor(packet.payload))
+        data = self.rt_processor(packet.payload)
+        self.items.append(self.build_item(packet, data))
+
 
 
     def rt_processor(self,payload: JuiceCcsds.RealTimeDownlink):

@@ -5,7 +5,9 @@ from ssmm_processors.processors import Processor
 class DirectoryDownlinkProcessor(Processor):
 
     def process(self, packet):
-        self.items.append(self.dd_processor(packet.payload))
+        data = self.dd_processor(packet.payload)
+        self.items.append(self.build_item(packet, data))
+
 
 
     def dd_processor(self, payload: JuiceCcsds.DirectoryDownlink):

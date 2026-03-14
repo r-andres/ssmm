@@ -5,7 +5,8 @@ from ssmm_processors.processors import Processor
 class DirectorySetupProcessor(Processor):
 
     def process(self, packet):
-        self.items.append(self.ds_processor(packet.payload))
+        data = self.ds_processor(packet.payload)
+        self.items.append(self.build_item(packet, data))
 
 
     def ds_processor(self,payload: JuiceCcsds.DirectorySetup):
