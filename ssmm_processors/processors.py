@@ -19,6 +19,8 @@ class Processor:
 
     def dump(self):
         if len(self.items) > 0:
+            self.calculate_metadata()
+
             output_file = Path(self.file).with_suffix(f".{self.packet_class.__name__}.json")
             with output_file.open("w") as f:
                 json.dump(self.items, f, indent=2)
@@ -31,6 +33,9 @@ class Processor:
             "timestamp": utc,
             "data": item
         }
+
+    def calculate_metadata(self):
+        pass
 
 
 class NullProcessor(Processor):

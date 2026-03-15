@@ -6,6 +6,7 @@ from tm_processor.spice.time_utils import get_cuc_time_48_bits
 class FileStatusProcessor(Processor):
 
     TWIN_THRESHOLD_SECONDS = 2
+    PARTITIONS = [b'\x0c']
 
     def __init__(self, file, packet_class):
         super().__init__(file, packet_class)
@@ -16,6 +17,11 @@ class FileStatusProcessor(Processor):
         cuc_coarse, _ = get_cuc_time_48_bits(packet.pus_header.sc_time)
         utc = cuc_to_utc(packet.pus_header.sc_time)
         data = self.fs_processor(packet.payload)
+
+        if packet.payload.partition_id not in self.PARTITIONS:
+            self.logger.warning("Skipping packet: Partition non valid")
+            return
+
         if abs(self.previous_coarse - cuc_coarse) < self.TWIN_THRESHOLD_SECONDS:
             self.logger.info("Twin packet")
 
@@ -42,7 +48,7 @@ class FileStatusProcessor(Processor):
             1: "ENABLED",
         }
     
-        item = {}
+        item = {}        
         for entry in payload.files:
             directory_id = entry.directory_id
             file_id = file_id_hex(entry.file_id)
@@ -60,14 +66,15 @@ class FileStatusProcessor(Processor):
             }
         return item
 
-    def dump(self):
-        self.calculate_metadata()
-        return super().dump()
-
     def calculate_metadata(self):
         for entry in self.items:
             data = entry.get("data")
             entry["metadata"] = {
                 "number_of_directories": len(data.keys()),
                 "number_of_files": sum([len(directory.keys()) for directory in data.values()])
+
                 }
+            
+    def build_item(self, packet, item):
+        build = super().build_item(packet, item)
+        return build

@@ -12,9 +12,8 @@ class DirectoryDownlinkProcessor(Processor):
 
     def dd_processor(self, payload: JuiceCcsds.DirectoryDownlink):
 
-        item = {
-            "number_of_directories": payload.num_directories
-        }
+        item = {}
+
         for entry in payload.directories:
             item[entry.directory_id] = {
                 "directory_id": entry.directory_id,
@@ -23,3 +22,12 @@ class DirectoryDownlinkProcessor(Processor):
                 "rf_band": "x" if entry.rf_band == 0 else "ka"
             }
         return item
+    
+    def calculate_metadata(self):
+        for entry in self.items:
+            data = entry.get("data")
+            entry["metadata"] = {
+                "number_of_directories": len(data.keys()),
+                "using_ka": [ directory.get('directory_id') for directory in data.values() if directory.get("rf_band") == "ka"],
+                "using_x": [ directory.get('directory_id') for directory in data.values() if directory.get("rf_band") == "x"]
+                }

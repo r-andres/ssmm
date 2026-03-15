@@ -11,9 +11,7 @@ class DirectorySetupProcessor(Processor):
 
     def ds_processor(self,payload: JuiceCcsds.DirectorySetup):
 
-        item = {
-            "number_of_directories": payload.num_directories
-        }
+        item = {}
         for entry in payload.directories:
             item[entry.directory_id] = {
                 "directory_id": entry.directory_id,
@@ -23,3 +21,11 @@ class DirectorySetupProcessor(Processor):
                 "max_wrt_speed": entry.max_wrt_speed
             }
         return item
+
+
+    def calculate_metadata(self):
+        for entry in self.items:
+            data = entry.get("data")
+            entry["metadata"] = {
+                "number_of_directories": len(data.keys()),
+                }
