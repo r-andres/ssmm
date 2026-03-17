@@ -1,0 +1,160 @@
+from flask import Flask, request, jsonify, send_file
+import sqlite3
+import json
+from datetime import datetime, timezone
+from flask_cors import CORS
+
+from utils import diff_file_structures
+
+app = Flask(__name__)
+CORS(app)
+
+DB = "snapshots.db"
+
+# Latest snapshot
+@app.route("/snapshot/<system_id>/latest")
+def latest_snapshot(system_id):
+    conn = sqlite3.connect(DB)
+    row = conn.execute(
+        "SELECT filepath FROM snapshots WHERE system_id=? ORDER BY time DESC LIMIT 1",
+        (system_id,)
+    ).fetchone()
+    conn.close()
+    if not row:
+        return {"error": "not found"}, 404
+    return send_file(row[0])
+
+# Time range query
+@app.route("/snapshot/<system_id>/<date>")
+def range_query(system_id, date):
+   
+    conn = sqlite3.connect(DB)
+    cursor = conn.execute(
+        "SELECT filepath FROM snapshots WHERE system_id=? AND time <= ? ORDER BY time DESC LIMIT 1",
+        (system_id, date)
+    )
+
+    row = cursor.fetchone()
+    if not row:
+        return [], 200
+    else:
+        with open(row[0]) as f:
+            result = json.load(f)
+    conn.close()
+    return jsonify(result)
+
+
+def to_utc(timestamp):
+    return timestamp[0:4] + "-" + timestamp[4:6] + "-" + timestamp[6:8] + "T" + timestamp[8:10] + ":" + timestamp[10:12] + ":" + timestamp[12:14] + "Z"
+
+
+@app.route("/snapshot/<system_id>/times")
+def snapshot_times(system_id):
+
+    conn = sqlite3.connect(DB)
+    cursor = conn.cursor()
+
+    cursor.execute(
+        """
+        SELECT time, system_id
+        FROM snapshots
+        WHERE system_id=?
+        ORDER BY time
+        """,
+        (system_id,)
+    )
+
+    rows = cursor.fetchall()
+    conn.close()
+
+    if not rows:
+        return jsonify([])
+
+    times = [
+        {
+            "timestamp": to_utc(r[0]),
+            "event": r[1]
+        }
+        for r in rows
+    ]
+
+    return jsonify(times)
+
+
+@app.route("/snapshot/times")
+def all_times():
+
+    conn = sqlite3.connect(DB)
+    cursor = conn.cursor()
+
+    cursor.execute(
+        "SELECT time, system_id FROM snapshots ORDER BY time"
+    )
+
+    rows = cursor.fetchall()
+    conn.close()
+
+    times = [
+        {
+            "timestamp": to_utc(r[0]),
+            "event": r[1]
+        }
+        for r in rows
+    ]
+
+    return jsonify(times)
+
+
+@app.route("/snapshot/<system_id>/diff/<date1>/<date2>")
+def query_diff(system_id, date1, date2):
+   
+    conn = sqlite3.connect(DB)
+    cursor = conn.execute(
+        "SELECT filepath FROM snapshots WHERE system_id=? AND time >= ? AND time <= ? ORDER BY time ASC",
+        (system_id, date1, date2)
+    )
+
+    all_added_files = []
+    all_removed_files = []
+
+
+    for current, nxt in iterate_with_next(cursor):
+        current_json = read_json(current[0])
+        nxt_json = read_json(nxt[0])
+
+        added_files, removed_files = diff_file_structures(current_json.get("data"), nxt_json.get("data"))
+
+        all_added_files.extend([[current_json["timestamp"], nxt_json["timestamp"]] + f for f in added_files])
+        all_removed_files.extend([[current_json["timestamp"], nxt_json["timestamp"]] + f for f in removed_files])
+
+    result = {
+        "added": all_added_files,
+        "removed": all_removed_files
+    }
+
+    conn.close()
+    return jsonify(result)
+
+
+def iterate_with_next(cursor):
+    current = cursor.fetchone()
+    if current is None:
+        return
+
+    while True:
+        nxt = cursor.fetchone()
+        if nxt is None:
+            break
+
+        yield current, nxt
+        current = nxt
+
+
+
+def read_json(filepath):
+    with open(filepath) as f:
+        return json.load(f)
+
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000)

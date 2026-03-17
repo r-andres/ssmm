@@ -28,8 +28,8 @@ parser.add_argument("-v","--version", action="version", version=f"JUICE CCSDS pr
 parser.add_argument("-f", "--file", type=str, help="Juice CCSDS file", required=True)
 parser.add_argument("-m", "--metakernel", type=Path, help="Path to spice kernels", default="/Users/randres/git/spice/juice/kernels/mk/juice_ops_local.tm")
 parser.add_argument("-d", "--debug", action="store_true", help="Enable debug logging")
-
-
+parser.add_argument("-o", "--output", type=Path, help="Output folder", default=Path.cwd())
+parser.add_argument("-s", "--split", action="store_true", help="Split files by day")
 
 payload = {
     JuiceCcsds.DirectorySetup: DirectorySetupProcessor,
@@ -74,7 +74,7 @@ def main():
 
             processor.process(packet)
 
-        processor.dump()
+        processor.dump(args.output, split=args.split)
 
     except Exception as e:
         print(f"process_tm.py: error: {e}")
