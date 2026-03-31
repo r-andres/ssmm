@@ -15,10 +15,10 @@ def diff_file_structures(old_data, new_data):
 
         # Files added/removed
         for fid in new_file_ids - old_file_ids:
-            added_files.append([f"{dir}/{fid}", f"{new_files[fid].get('creation_time')}", f"{new_files[fid].get('file_size')}"])
+            added_files.append({ **new_files[fid], 'file_dir': dir })
 
         for fid in old_file_ids - new_file_ids:
-            removed_files.append([f"{dir}/{fid}", f"{old_files[fid].get('creation_time')}", f"{old_files[fid].get('file_size')}"])
+            removed_files.append({ **old_files[fid], 'file_dir': dir })
 
 
     return added_files, removed_files

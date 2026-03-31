@@ -123,11 +123,17 @@ def query_diff(system_id, date1, date2):
         nxt_json = read_json(nxt[0])
 
         added_files, removed_files = diff_file_structures(current_json.get("data"), nxt_json.get("data"))
+        step = {
+            "source": current_json["timestamp"],
+            "target": nxt_json["timestamp"]
+        } 
 
-        all_added_files.extend([[current_json["timestamp"], nxt_json["timestamp"]] + f for f in added_files])
-        all_removed_files.extend([[current_json["timestamp"], nxt_json["timestamp"]] + f for f in removed_files])
+        all_added_files.extend([{ **f, "step": step} for f in added_files])
+        all_removed_files.extend([{ **f, "step": step} for f in removed_files])
 
     result = {
+        "origin": date1,
+        "target": date2,
         "added": all_added_files,
         "removed": all_removed_files
     }
