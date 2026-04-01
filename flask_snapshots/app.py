@@ -109,20 +109,39 @@ def all_times():
 def query_diff(system_id, date1, date2):
    
     conn = sqlite3.connect(DB)
+    
+    downlink = []
+    
+    # Retrieve donwlinks
     cursor = conn.execute(
-        "SELECT filepath FROM snapshots WHERE system_id=? AND time >= ? AND time <= ? ORDER BY time ASC",
+        "SELECT filepath, time FROM snapshots WHERE system_id=? AND time <= ? ORDER BY time DESC LIMIT 1",
+        ('DirectoryDownlink', date1)
+    )
+    prev = cursor.fetchone()
+    if prev:
+        downlink.append({"time": prev[1], "filepath": prev[0]}) 
+
+    cursor = conn.execute(
+        "SELECT filepath, time FROM snapshots WHERE system_id=? AND time >= ? AND time <= ? ORDER BY time ASC",
+        ('DirectoryDownlink', date1, date2)
+    )
+    for step in cursor.fetchall():
+        downlink.append({"time": step[1], "filepath": step[0]}) 
+
+    cursor = conn.execute(
+        "SELECT filepath, time FROM snapshots WHERE system_id=? AND time >= ? AND time <= ? ORDER BY time ASC",
         (system_id, date1, date2)
     )
 
     all_added_files = []
     all_removed_files = []
 
-
     for current, nxt in iterate_with_next(cursor):
         current_json = read_json(current[0])
         nxt_json = read_json(nxt[0])
 
-        added_files, removed_files = diff_file_structures(current_json.get("data"), nxt_json.get("data"))
+        downlink_state = search_active_downlink(downlink, current[1])
+        added_files, removed_files = diff_file_structures(downlink_state.get("data") if downlink_state else None, current_json.get("data"), nxt_json.get("data"))
         step = {
             "source": current_json["timestamp"],
             "target": nxt_json["timestamp"]
@@ -160,6 +179,18 @@ def iterate_with_next(cursor):
 def read_json(filepath):
     with open(filepath) as f:
         return json.load(f)
+
+
+def search_active_downlink(downlink, time):
+    file_path = None
+    for slot in downlink:
+        if time < slot.get('time'):
+            break
+        file_path = slot.get('filepath')
+    
+    if file_path:
+        return read_json(file_path)
+    return None
 
 
 if __name__ == "__main__":

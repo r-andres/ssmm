@@ -4,4 +4,7 @@ tm*.json
 __pycache__
 *.db
 sandbox
+check_downlink
 .env
+.vscode
+launch*
