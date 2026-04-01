@@ -20,5 +20,15 @@ def diff_file_structures(old_data, new_data):
         for fid in old_file_ids - new_file_ids:
             removed_files.append({ **old_files[fid], 'file_dir': dir })
 
+    # 2. Entire new directories → all files are "added"
+    for dir in new_dirs - old_dirs:
+        for fid, file_data in new_data[dir].items():
+            added_files.append({**file_data, 'file_dir': dir})
+
+    # 3. Entire removed directories → all files are "removed"
+    for dir in old_dirs - new_dirs:
+        for fid, file_data in old_data[dir].items():
+            removed_files.append({**file_data, 'file_dir': dir})
+
 
     return added_files, removed_files

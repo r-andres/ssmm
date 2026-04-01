@@ -57,8 +57,11 @@ def main():
     # Create DB and table if not exists
     conn = sqlite3.connect(args.db_path)
     cursor = conn.cursor()
+    # Drop table if it exists
+    cursor.execute("DROP TABLE IF EXISTS snapshots")
+
     cursor.execute("""
-        CREATE TABLE IF NOT EXISTS snapshots (
+        CREATE TABLE snapshots (
             time TEXT NOT NULL,
             system_id TEXT NOT NULL,
             filepath TEXT NOT NULL
