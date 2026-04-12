@@ -10,7 +10,7 @@ import hashlib
 
 from ssmm_processors import (NullProcessor, 
     DirectorySetupProcessor, DirectoryDownlinkProcessor, FileStatusProcessor, 
-    RealTimeDownlinkProcessor)
+    RealTimeDownlinkProcessor, FilesDownloadedProcessor)
 from ssmm_processors.utils import cuc_to_utc, get_packet_description
 
 logging.basicConfig(
@@ -35,7 +35,7 @@ payload = {
     JuiceCcsds.DirectorySetup: DirectorySetupProcessor,
     JuiceCcsds.DirectoryDownlink: DirectoryDownlinkProcessor,
     JuiceCcsds.FileStatus: FileStatusProcessor,
-    JuiceCcsds.RealTimeDownlink: RealTimeDownlinkProcessor,
+    JuiceCcsds.RealTimeDownlink: FilesDownloadedProcessor,
     JuiceCcsds.UnknowPayload: NullProcessor,
 }
 
@@ -66,7 +66,7 @@ def main():
                 continue
             processed.add(md5)
             utc = cuc_to_utc(pus_header.sc_time)
-            logger.info("%s - %s", utc, get_packet_description(packet))
+            logger.debug("%s - %s", utc, get_packet_description(packet))
             
             if processor is None:
                 packet_class = type(packet.payload)

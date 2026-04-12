@@ -1,7 +1,8 @@
-from flask import Flask, request, jsonify, send_file
+from flask import Flask, request, jsonify, send_file, Response
 import sqlite3
 import json
 from datetime import datetime, timezone
+import requests
 from flask_cors import CORS
 
 from utils import diff_file_structures
@@ -88,7 +89,11 @@ def all_times():
     cursor = conn.cursor()
 
     cursor.execute(
-        "SELECT time, system_id FROM snapshots ORDER BY time"
+        """
+        SELECT time, system_id 
+        FROM snapshots 
+        WHERE system_id != 'RealTimeDownlink'
+        ORDER BY time"""
     )
 
     rows = cursor.fetchall()
@@ -192,6 +197,81 @@ def search_active_downlink(downlink, time):
         return read_json(file_path)
     return None
 
+@app.route("/downloads/<date1>/<date2>")
+def query_downloads(date1, date2):
+    conn = sqlite3.connect(DB)
+    
+    x_band = {}
+    ka_band = {}
+
+    cursor = conn.execute(
+        "SELECT filepath, time FROM snapshots WHERE system_id=? AND time >= ? AND time <= ? ORDER BY time ASC",
+        ('RealTimeDownlink', date1, date2)
+    )
+
+    rows = cursor.fetchall()
+    conn.close()
+
+    if not rows:
+        return jsonify([])
+
+    for row in rows:
+        timestamp = row[1]
+        current_json = read_json(row[0])
+
+        file_id = (
+            current_json.get("data", {})
+                .get("x", {})
+                .get("transmitting", {})
+                .get("file_id")
+        )
+        if file_id:
+            x_band[file_id] = { 'file_id' : file_id, 'timestamp': timestamp}
+
+    return x_band
+
+
+# Change this to the API you want to proxy
+TARGET_BASE = "http://opsweb.esoc.esa.int/"
+
+# Optional: restrict allowed methods
+ALLOWED_METHODS = ["GET", "OPTIONS"]
+
+
+@app.route("/proxy/<path:path>", methods=ALLOWED_METHODS)
+def proxy(path):
+    # Construct full target URL
+    target_url = f"{TARGET_BASE}/{path}"
+
+    # Forward headers (excluding Host)
+    headers = {
+        key: value
+        for key, value in request.headers
+        if key.lower() != "host"
+    }
+
+    # Forward request to target
+    resp = requests.request(
+        method=request.method,
+        url=target_url,
+        headers=headers,
+        params=request.args,
+        data=request.get_data(),
+        cookies=request.cookies,
+        allow_redirects=False,
+    )
+
+    # Build response
+    excluded_headers = ["content-encoding", "content-length", "transfer-encoding", "connection"]
+    response_headers = [
+        (name, value)
+        for name, value in resp.raw.headers.items()
+        if name.lower() not in excluded_headers
+    ]
+
+    response = Response(resp.content, resp.status_code, response_headers)
+
+    return response
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)

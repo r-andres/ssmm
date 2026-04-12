@@ -1,4 +1,5 @@
 
+from datetime import datetime
 from tm_processor.spice.time_utils import get_cuc_time_48_bits, get_sclk_str, scs2utc
 
 
@@ -23,3 +24,18 @@ def get_packet_description(packet):
   Service Subtype: {packet.pus_header.service_subtype}
   ID: {get_service_code(packet):#04x}
 """
+
+def duration_seconds(start_utc: str, end_utc: str) -> float:
+    fmt = "%Y-%m-%dT%H:%M:%S.%fZ"
+    
+    start_dt = datetime.strptime(start_utc, fmt)
+    end_dt = datetime.strptime(end_utc, fmt)
+    
+    duration = end_dt - start_dt
+    return duration.total_seconds()
+
+def format_duration_hms(seconds: float) -> str:
+    seconds = int(seconds)
+    hours, seconds = divmod(seconds, 3600)
+    minutes, seconds = divmod(seconds, 60)
+    return f"{hours:02}:{minutes:02}:{seconds:02}"

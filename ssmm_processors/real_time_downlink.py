@@ -7,7 +7,8 @@ class RealTimeDownlinkProcessor(Processor):
 
     def process(self, packet):
         data = self.rt_processor(packet.payload)
-        self.items.append(self.build_item(packet, data))
+        if data is not None:
+            self.items.append(self.build_item(packet, data))
 
 
 
