@@ -2,6 +2,7 @@ from kaitai.juice_ccsds import JuiceCcsds
 from ssmm_processors.processors import Processor
 from ssmm_processors.utils import cuc_to_utc, file_id_hex
 from tm_processor.spice.time_utils import get_cuc_time_48_bits
+import json
 
 class FileStatusProcessor(Processor):
 
@@ -22,15 +23,14 @@ class FileStatusProcessor(Processor):
             self.logger.warning("Skipping packet: Partition non valid")
             return
 
+        self.logger.info("%s CST019AC: %d", utc, packet.payload.num_files)
         if abs(self.previous_coarse - cuc_coarse) < self.TWIN_THRESHOLD_SECONDS:
-            self.logger.info("Twin packet")
-
             previous_item = self.items[-1]
+            self.logger.info("Aggregated packet %s", previous_item.get("timestamp"))
             previous_data = previous_item.get("data")
-            previous_data.update(data)
-
-            previous_item["twin"] = previous_item.get("twin", [previous_item.get("timestamp")])
-            previous_item["twin"].append(utc)
+            self._update_data(previous_data, data)
+            previous_item["aggregated"] = previous_item.get("aggregated", [previous_item.get("timestamp")])
+            previous_item["aggregated"].append(utc)
         else:
             self.items.append(self.build_item(packet, data))
         
@@ -74,7 +74,16 @@ class FileStatusProcessor(Processor):
                 "number_of_files": sum([len(directory.keys()) for directory in data.values()])
 
                 }
-            
+
     def build_item(self, packet, item):
         build = super().build_item(packet, item)
         return build
+
+    def _update_data(self, accum, new):
+        for directory_id in new:
+            if directory_id not in accum:
+                accum[directory_id] = {}
+            directory = accum[directory_id]
+            for file_id in new[directory_id]:
+                directory[file_id] = new[directory_id][file_id]
+        return accum
