@@ -4,7 +4,7 @@ import argparse
 
 BATCH_SIZE = 1000  # commit every N files for efficiency
 
-def ingest_files(data_dir: Path, db_path: str):
+def ingest_files(data_dir: Path, db_path: str, forced_path: str = None):
     """
     Scan data_dir recursively for JSON files and insert entries
     (timestamp, system_id, filepath) into SQLite database.
@@ -26,7 +26,11 @@ def ingest_files(data_dir: Path, db_path: str):
             print(f"Skipping {str(file.absolute())}, invalid timestamp in filename")
             continue
 
-        files_to_insert.append((timestamp, system_id, str(file.absolute())))
+        path = str(file.absolute())
+        if forced_path:
+            path = forced_path + "/" + file.relative_to(data_dir).as_posix()
+
+        files_to_insert.append((timestamp, system_id, path))
 
         if len(files_to_insert) >= BATCH_SIZE:
             cursor.executemany(
@@ -50,8 +54,12 @@ def main():
     parser = argparse.ArgumentParser(description="Ingest JSON snapshots into SQLite database")
     parser.add_argument("--data_dir", type=Path, required=True,
                         help="Root directory containing system folders with JSON files")
-    parser.add_argument("--db_path", type=str, default="snapshots.db",
+    parser.add_argument("--db_path", type=str, required=True,
                         help="Path to SQLite database (will be created if missing)")
+    parser.add_argument("--forced_path", type=str,
+                        help="Forced path to use instead of absolute path. e.g. /reports ")
+
+
     args = parser.parse_args()
 
     # Create DB and table if not exists
@@ -73,7 +81,7 @@ def main():
     conn.close()
 
     # Run ingestion
-    ingest_files(args.data_dir, args.db_path)
+    ingest_files(args.data_dir, args.db_path, args.forced_path)
 
 if __name__ == "__main__":
     main()

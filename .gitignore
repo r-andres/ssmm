@@ -3,8 +3,10 @@ tm*.dds
 tm*.json
 __pycache__
 *.db
-sandbox
+sandbox*
 check_downlink
 .env
 .vscode
 launch*
+reports
+renderer

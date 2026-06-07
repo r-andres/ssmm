@@ -1,3 +1,6 @@
 kaitaistruct
 Flask
 flask-cors
+whitenoise
+requests
+flask_httpauth

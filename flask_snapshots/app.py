@@ -1,19 +1,52 @@
-from flask import Flask, request, jsonify, send_file, Response
+from flask import Flask, request, jsonify, send_file, Response, send_from_directory, Blueprint
 import sqlite3
 import json
-from datetime import datetime, timezone
 import requests
 from flask_cors import CORS
+from whitenoise import WhiteNoise
+from flask_httpauth import HTTPBasicAuth
+from werkzeug.security import generate_password_hash, check_password_hash
+import os
+
 
 from utils import diff_file_structures
 
-app = Flask(__name__)
-CORS(app)
+ENABLE_AUTH = os.environ.get('ENABLE_AUTH', 'false').lower() == 'true'
+AUTH_USER = os.environ.get('AUTH_USER', 'admin')
+AUTH_PASSWORD = os.environ.get('AUTH_PASSWORD', 'secret')
+DB = os.environ.get('DB_PATH', "snapshots.db")
 
-DB = "snapshots.db"
+STATIC_FOLDER = '../renderer'
+print(f"Authorization enabled: {ENABLE_AUTH}")
+print(f"Database: {DB}")
+
+app = Flask(__name__, static_folder=STATIC_FOLDER)
+CORS(app)
+app.wsgi_app = WhiteNoise(app.wsgi_app, root=f'{STATIC_FOLDER}/', index_file=False, autorefresh=False)
+auth = HTTPBasicAuth()
+
+api_blueprint = Blueprint("api_v1", __name__, url_prefix="/ssmm_api")
+
+USERS = {
+    AUTH_USER: generate_password_hash(AUTH_PASSWORD)
+}
+
+@auth.verify_password
+def verify_password(username, password):
+    if username in USERS and check_password_hash(USERS.get(username), password):
+        return username
+    return None
+
+@app.before_request
+def protect_all():
+    if not ENABLE_AUTH or request.path.startswith("/proxy/"):
+        return
+    return auth.login_required(lambda: None)()
+
+
 
 # Latest snapshot
-@app.route("/snapshot/<system_id>/latest")
+@api_blueprint.route("/snapshot/<system_id>/latest")
 def latest_snapshot(system_id):
     conn = sqlite3.connect(DB)
     row = conn.execute(
@@ -26,7 +59,7 @@ def latest_snapshot(system_id):
     return send_file(row[0])
 
 # Time range query
-@app.route("/snapshot/<system_id>/<date>")
+@api_blueprint.route("/snapshot/<system_id>/<date>")
 def range_query(system_id, date):
    
     conn = sqlite3.connect(DB)
@@ -49,7 +82,7 @@ def to_utc(timestamp):
     return timestamp[0:4] + "-" + timestamp[4:6] + "-" + timestamp[6:8] + "T" + timestamp[8:10] + ":" + timestamp[10:12] + ":" + timestamp[12:14] + "Z"
 
 
-@app.route("/snapshot/<system_id>/times")
+@api_blueprint.route("/snapshot/<system_id>/times")
 def snapshot_times(system_id):
 
     conn = sqlite3.connect(DB)
@@ -82,7 +115,7 @@ def snapshot_times(system_id):
     return jsonify(times)
 
 
-@app.route("/snapshot/times")
+@api_blueprint.route("/snapshot/times")
 def all_times():
 
     conn = sqlite3.connect(DB)
@@ -110,7 +143,7 @@ def all_times():
     return jsonify(times)
 
 
-@app.route("/snapshot/<system_id>/diff/<date1>/<date2>")
+@api_blueprint.route("/snapshot/<system_id>/diff/<date1>/<date2>")
 def query_diff(system_id, date1, date2):
    
     conn = sqlite3.connect(DB)
@@ -197,7 +230,7 @@ def search_active_downlink(downlink, time):
         return read_json(file_path)
     return None
 
-@app.route("/downloads/<date1>/<date2>")
+@api_blueprint.route("/downloads/<date1>/<date2>")
 def query_downloads(date1, date2):
     conn = sqlite3.connect(DB)
     
@@ -238,7 +271,7 @@ TARGET_BASE = "http://opsweb.esoc.esa.int/"
 ALLOWED_METHODS = ["GET", "OPTIONS"]
 
 
-@app.route("/proxy/<path:path>", methods=ALLOWED_METHODS)
+@api_blueprint.route("/proxy/<path:path>", methods=ALLOWED_METHODS)
 def proxy(path):
     # Construct full target URL
     target_url = f"{TARGET_BASE}/{path}"
@@ -272,6 +305,18 @@ def proxy(path):
     response = Response(resp.content, resp.status_code, response_headers)
 
     return response
+
+
+@app.route('/')
+def home():
+    return send_from_directory(STATIC_FOLDER, 'index.html')
+
+# 4. Manejador de rutas (Catch-all) para React Router protegido
+# @app.errorhandler(404)
+# def route_404(e):
+#     return send_from_directory(STATIC_FOLDER, 'index.html')
+
+app.register_blueprint(api_blueprint)
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
